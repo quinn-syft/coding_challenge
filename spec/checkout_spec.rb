@@ -34,4 +34,17 @@ RSpec.describe Checkout do
     end
   end
   
+  describe '#subtotal' do
+    context 'Checkout with no discounts' do
+      subject { Checkout.new }
+      it 'calculates the correct price' do
+        subject.scan(product1) # £9.25
+        subject.scan(product2) # £45
+        subject.scan(product3) # £19.95
+        subject.scan(product1) # £9.25
+        expect(subject.send :subtotal).to eq(8345)
+      end
+    end
+  end
+  
 end

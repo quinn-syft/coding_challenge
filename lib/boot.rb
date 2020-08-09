@@ -9,3 +9,4 @@ Money.locale_backend = nil
 
 require_relative 'product'
 require_relative 'checkout'
+require_relative 'global_discount'

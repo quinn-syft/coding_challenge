@@ -7,5 +7,5 @@ class GlobalDiscount
   include ActiveModel::Validations
   
   attr_accessor :min_price_cents, :discount_percent
-  validates :min_price_cents, :discount_percent, numericality: {only_integer: true}
+  validates :min_price_cents, :discount_percent, presence: true, numericality: {only_integer: true}
 end

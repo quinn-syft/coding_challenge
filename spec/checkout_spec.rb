@@ -16,13 +16,23 @@ RSpec.describe Checkout do
     context 'Several discounts provided' do
       let(:discounts) { [
         GlobalDiscount.new(min_price_cents: 6000, discount_percent: 10),
-        GlobalDiscount.new(min_price_cents: 20000, discount_percent: 15)
+        GlobalDiscount.new(min_price_cents: 20000, discount_percent: 15),
+        BulkDiscount.new(product_code: '001', threshold: 2, price_cents: 850),
+        BulkDiscount.new(product_code: '001', threshold: 10, price_cents: 800)
       ] }
       subject { Checkout.new(discounts) }
       it 'sets the internal global_discounts' do
         expect(subject.send :global_discounts).to eq({
           6000 => 10,
           20000 => 15
+        })
+      end
+      it 'sets the internal bulk_discounts' do
+        expect(subject.send :bulk_discounts).to eq({
+          '001' => {
+            2 => 850,
+            10 => 800
+          }
         })
       end
     end
@@ -86,14 +96,37 @@ RSpec.describe Checkout do
     end
   end
   
+  describe '#price_for' do
+    let(:discounts) { [
+      BulkDiscount.new(product_code: '001', threshold: 2, price_cents: 850),
+      BulkDiscount.new(product_code: '001', threshold: 10, price_cents: 500)      
+    ] }
+    subject { Checkout.new(discounts) }
+    it 'returns the product price for a product with no discounts' do
+      expect(subject.send :price_for, product2, 10).to eq(4500)
+    end
+    it 'returns the product price for a quantity under the threshold' do
+      expect(subject.send :price_for, product1, 1).to eq(925)
+    end
+    it 'returns the best discount for a quantity over the top threshold' do
+      expect(subject.send :price_for, product1, 50).to eq(500)
+    end
+    it 'returns the most appropriate discount for a quantity in between thresholds' do
+      expect(subject.send :price_for, product1, 2).to eq(850)
+    end
+  end
+  
   describe '#total' do
     # Discounts are the examples from the checkout.md, plus some other thresholds for test purposes
     let(:discounts) { [
       GlobalDiscount.new(min_price_cents: 6000, discount_percent: 10),
-      GlobalDiscount.new(min_price_cents: 20000, discount_percent: 15)
+      GlobalDiscount.new(min_price_cents: 20000, discount_percent: 15),
+      BulkDiscount.new(product_code: '001', threshold: 2, price_cents: 850),
+      BulkDiscount.new(product_code: '001', threshold: 10, price_cents: 500)      
     ] }
     subject { Checkout.new(discounts) }
     
+    # Example from checkout.md
     it 'applies the global discount if over the threshold' do
       subject.scan(product1)
       subject.scan(product2)
@@ -102,12 +135,30 @@ RSpec.describe Checkout do
     end
     
     it 'applies a better global discount if over the higher threshold' do
-      subject.scan(product2)
-      subject.scan(product2)
-      subject.scan(product2)
-      subject.scan(product2)
-      subject.scan(product2)
+      5.times { subject.scan(product2) }
       expect(subject.total.format).to eq('£191.25')
+    end
+    
+    # Example from checkout.md
+    it 'applies the lower bulk discount if appropriate' do
+      subject.scan(product1)
+      subject.scan(product3)
+      subject.scan(product1)
+      expect(subject.total.format).to eq('£36.95')
+    end
+    
+    it 'applies the upper bulk discount if appropriate' do
+      10.times { subject.scan(product1) }
+      expect(subject.total.format).to eq('£50.00')
+    end
+    
+    # Example from checkout.md
+    it 'applies bulk discounts then global discounts if both apply' do
+      subject.scan(product1)
+      subject.scan(product2)
+      subject.scan(product1)
+      subject.scan(product3)
+      expect(subject.total.format).to eq('£73.76')
     end
   end
   

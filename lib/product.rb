@@ -9,7 +9,7 @@ class Product
   validates :price_cents, presence: true, numericality: {only_integer: true}
   
   def price
-    Money.new(price_cents, 'GBP')
+    Money.new(price_cents)
   end
   
 end

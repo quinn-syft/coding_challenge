@@ -20,7 +20,7 @@ class Checkout
     st = subtotal
     global_discount = best_global_discount_for(st)
     total_cents = st * (1.0 - global_discount.to_f / 100)
-    Money.new(total_cents, 'GBP')
+    Money.new(total_cents)
   end
   
   protected
